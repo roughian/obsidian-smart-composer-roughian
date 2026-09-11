@@ -1,0 +1,10 @@
+{
+  "id": "smart-composer",
+  "name": "Smart Composer (roughian)",
+  "version": "1.3.0",
+  "minAppVersion": "1.9.12",
+  "description": "roughian fork of Smart Composer by Heesu Suh: AI chat with note context, Plan (subscription) models, image generation with Eagle hand-off, and one-click edits.",
+  "author": "roughian (fork of Heesu Suh / glowingjade)",
+  "authorUrl": "https://github.com/roughian/obsidian-smart-composer-roughian",
+  "isDesktopOnly": false
+}
