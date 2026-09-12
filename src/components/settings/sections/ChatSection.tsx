@@ -115,7 +115,7 @@ export function ChatSection() {
 
       <ObsidianSetting
         name="Image destination"
-        desc="Vault folder keeps the file in the output folder. CMDS Eagle (sync) follows the CMDS Eagle plugin's own paste setting (Eagle, vault, cloud or ask) and its link mode; the vault copy is removed once Eagle or the cloud has the file."
+        desc="Vault folder keeps the file in the output folder. Eagle library (direct) imports the original through Eagle's local API and links it from the note. CMDS Eagle (sync) follows that plugin's own paste setting (Eagle, vault, cloud or ask) and link mode. Outside the vault the local copy is removed once the destination has the file."
       >
         <ObsidianDropdown
           value={settings.imageGeneration.destination}
@@ -127,6 +127,24 @@ export function ChatSection() {
               imageGeneration: {
                 ...settings.imageGeneration,
                 destination: value,
+              },
+            })
+          }}
+        />
+      </ObsidianSetting>
+
+      <ObsidianSetting
+        name="Eagle API URL"
+        desc="Local Eagle API used by Eagle library (direct). Eagle must be running."
+      >
+        <ObsidianTextInput
+          value={settings.imageGeneration.eagleApiBaseUrl}
+          onChange={async (value) => {
+            await setSettings({
+              ...settings,
+              imageGeneration: {
+                ...settings.imageGeneration,
+                eagleApiBaseUrl: value.trim().replace(/\/+$/, ''),
               },
             })
           }}

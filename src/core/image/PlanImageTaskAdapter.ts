@@ -21,6 +21,7 @@ import { getProviderCapabilities } from '../llm/providerCapabilities'
 import { BackgroundTaskManager } from '../tasks/BackgroundTaskManager'
 
 import { getEagleBridge, getEaglePasteBehavior } from './eagle-bridge'
+import { EagleClient } from './eagle-client'
 import { ImageDeliveryResult, deliverGeneratedImage } from './image-delivery'
 import { resolveImageDestination } from './image-destination'
 import { isImageGenerator } from './image-generator'
@@ -60,9 +61,12 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
             : '',
         bytes,
         mimeType,
+        annotation:
+          typeof task.input.prompt === 'string' ? task.input.prompt : undefined,
       },
       {
         bridge,
+        eagle: new EagleClient(settings.imageGeneration.eagleApiBaseUrl),
         resolveAbsolutePath: (path) =>
           adapter instanceof FileSystemAdapter
             ? `${adapter.getBasePath()}/${path}`

@@ -16,22 +16,25 @@ describe('resolveImageDestination', () => {
     ).toBe('cloud')
   })
 
-  it('stays in the vault when the setting says vault', () => {
+  it.each([
+    ['vault', 'vault'],
+    ['eagle', 'eagle'],
+  ] as const)('maps the %s setting straight to %s', (configured, expected) => {
     expect(
       resolveImageDestination({
         requested: undefined,
-        configured: 'vault',
-        pasteBehavior: 'eagle',
+        configured,
+        pasteBehavior: 'cloud',
       }),
-    ).toBe('vault')
+    ).toBe(expected)
   })
 
   it.each([
-    ['eagle', 'eagle'],
+    ['eagle', 'cmds-eagle'],
     ['cloud', 'cloud'],
     ['local', 'vault'],
-    ['ask', 'eagle'],
-    [undefined, 'eagle'],
+    ['ask', 'cmds-eagle'],
+    [undefined, 'cmds-eagle'],
   ] as const)(
     'follows CMDS Eagle paste behaviour %s as %s when syncing',
     (behavior, expected) => {
@@ -55,8 +58,9 @@ describe('destinationFromPasteBehavior', () => {
 describe('isImageDestination', () => {
   it.each([
     ['vault', true],
+    ['eagle', true],
     ['cmds-eagle', true],
-    ['eagle', false],
+    ['cloud', false],
     [42, false],
   ])('classifies %j as %s', (value, expected) => {
     expect(isImageDestination(value)).toBe(expected)
@@ -64,9 +68,10 @@ describe('isImageDestination', () => {
 })
 
 describe('IMAGE_DESTINATION_LABELS', () => {
-  it('labels both settings', () => {
+  it('labels all three settings', () => {
     expect(Object.keys(IMAGE_DESTINATION_LABELS).sort()).toEqual([
       'cmds-eagle',
+      'eagle',
       'vault',
     ])
   })

@@ -40,6 +40,7 @@ function settingsWith({
       quality: 'high' as const,
       concurrency: 1 as const,
       destination: 'vault' as const,
+      eagleApiBaseUrl: 'http://localhost:41595',
     },
   }
 }

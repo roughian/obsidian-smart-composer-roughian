@@ -1,4 +1,5 @@
 import { EagleBridge } from './eagle-bridge'
+import { EagleClient } from './eagle-client'
 import {
   ImageDeliveryDeps,
   ImageDeliveryInput,
@@ -26,9 +27,22 @@ function fakeBridge(overrides: Partial<EagleBridge> = {}): EagleBridge {
   }
 }
 
+function fakeEagle(overrides: Partial<EagleClient> = {}): EagleClient {
+  return {
+    isRunning: jest.fn().mockResolvedValue(true),
+    addFromPath: jest.fn().mockResolvedValue('ID1'),
+    waitForItem: jest
+      .fn()
+      .mockResolvedValue({ id: 'ID1', name: 'circle', ext: 'png' }),
+    getLibraryPath: jest.fn().mockResolvedValue('/lib.library'),
+    ...overrides,
+  } as unknown as EagleClient
+}
+
 function deps(overrides: Partial<ImageDeliveryDeps> = {}): ImageDeliveryDeps {
   return {
     bridge: null,
+    eagle: fakeEagle(),
     resolveAbsolutePath: (path) => `/vault/${path}`,
     trashLocalCopy: jest.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -49,17 +63,59 @@ describe('deliverGeneratedImage', () => {
     expect(trash).not.toHaveBeenCalled()
   })
 
+  it('imports directly through the Eagle API and links the library original', async () => {
+    const addFromPath = jest.fn().mockResolvedValue('ID1')
+    const eagle = fakeEagle({ addFromPath })
+    const trash = jest.fn().mockResolvedValue(undefined)
+
+    const result = await deliverGeneratedImage(
+      { ...input, destination: 'eagle', annotation: 'a red circle' },
+      deps({ eagle, trashLocalCopy: trash }),
+    )
+
+    expect(result).toEqual({
+      destination: 'eagle',
+      markdown:
+        '[![circle](file:///lib.library/images/ID1.info/circle.png)](eagle://item/ID1)',
+    })
+    expect(addFromPath).toHaveBeenCalledWith({
+      path: '/vault/Generated/circle.png',
+      name: 'circle',
+      annotation: 'a red circle',
+      tags: ['smart-composer'],
+    })
+    expect(trash).toHaveBeenCalledWith('Generated/circle.png')
+  })
+
+  it('keeps the vault copy when Eagle is not running', async () => {
+    const trash = jest.fn()
+
+    const result = await deliverGeneratedImage(
+      { ...input, destination: 'eagle' },
+      deps({
+        eagle: fakeEagle({ isRunning: jest.fn().mockResolvedValue(false) }),
+        trashLocalCopy: trash,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      destination: 'vault',
+      error: 'Eagle is not running or its API is unreachable.',
+    })
+    expect(trash).not.toHaveBeenCalled()
+  })
+
   it('imports into Eagle through the plugin and trashes the vault copy', async () => {
     const bridge = fakeBridge()
     const trash = jest.fn().mockResolvedValue(undefined)
 
     const result = await deliverGeneratedImage(
-      { ...input, destination: 'eagle' },
+      { ...input, destination: 'cmds-eagle' },
       deps({ bridge, trashLocalCopy: trash }),
     )
 
     expect(result).toEqual({
-      destination: 'eagle',
+      destination: 'cmds-eagle',
       markdown: '[![circle](file:///lib/circle.png)](eagle://item/ID1)',
     })
     const [file, notePath] = (bridge.uploadImageToEagle as jest.Mock).mock
@@ -75,7 +131,7 @@ describe('deliverGeneratedImage', () => {
 
     await expect(
       deliverGeneratedImage(
-        { ...input, destination: 'eagle' },
+        { ...input, destination: 'cmds-eagle' },
         deps({ trashLocalCopy: trash }),
       ),
     ).resolves.toEqual({
@@ -95,7 +151,7 @@ describe('deliverGeneratedImage', () => {
     })
 
     const result = await deliverGeneratedImage(
-      { ...input, destination: 'eagle' },
+      { ...input, destination: 'cmds-eagle' },
       deps({ bridge }),
     )
 

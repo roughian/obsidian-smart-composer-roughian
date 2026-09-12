@@ -44,6 +44,7 @@ function createSettings(
       quality: 'high',
       concurrency: 1,
       destination: 'vault',
+      eagleApiBaseUrl: 'http://localhost:41595',
     },
     embeddingModelId: 'openai/text-embedding-3-small',
     systemPrompt: '',

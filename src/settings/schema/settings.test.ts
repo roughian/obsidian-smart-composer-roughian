@@ -33,6 +33,7 @@ describe('parseSmartComposerSettings', () => {
         quality: 'high',
         concurrency: 1,
         destination: 'vault',
+        eagleApiBaseUrl: 'http://localhost:41595',
       },
       systemPrompt: '',
 
@@ -161,6 +162,7 @@ describe('parseSmartComposerSettings', () => {
         quality: 'high',
         concurrency: 1,
         destination: 'vault',
+        eagleApiBaseUrl: 'http://localhost:41595',
       },
     }
     const before = JSON.parse(JSON.stringify(input))
@@ -191,6 +193,7 @@ describe('parseSmartComposerSettings', () => {
       quality: 'low',
       concurrency: 1,
       destination: 'vault',
+      eagleApiBaseUrl: 'http://localhost:41595',
     })
   })
 })

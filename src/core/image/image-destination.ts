@@ -1,10 +1,18 @@
-/** Setting values: keep the file in the vault, or follow the CMDS Eagle plugin. */
-export const IMAGE_DESTINATIONS = ['vault', 'cmds-eagle'] as const
+/**
+ * Setting values: keep the file in the vault, send it straight to the Eagle
+ * library through Eagle's local API, or follow the CMDS Eagle plugin.
+ */
+export const IMAGE_DESTINATIONS = ['vault', 'eagle', 'cmds-eagle'] as const
 
 export type ImageDestination = (typeof IMAGE_DESTINATIONS)[number]
 
 /** Where a generated image actually ends up. */
-export const RESOLVED_IMAGE_DESTINATIONS = ['vault', 'eagle', 'cloud'] as const
+export const RESOLVED_IMAGE_DESTINATIONS = [
+  'vault',
+  'eagle',
+  'cmds-eagle',
+  'cloud',
+] as const
 
 export type ResolvedImageDestination =
   (typeof RESOLVED_IMAGE_DESTINATIONS)[number]
@@ -13,9 +21,11 @@ export type ResolvedImageDestination =
 export type EaglePasteBehavior = 'eagle' | 'local' | 'cloud' | 'ask'
 
 export const DEFAULT_IMAGE_DESTINATION: ImageDestination = 'vault'
+export const DEFAULT_EAGLE_API_BASE_URL = 'http://localhost:41595'
 
 export const IMAGE_DESTINATION_LABELS: Record<ImageDestination, string> = {
   vault: 'Vault folder',
+  eagle: 'Eagle library (direct)',
   'cmds-eagle': 'CMDS Eagle (sync)',
 }
 
@@ -25,6 +35,7 @@ export const RESOLVED_IMAGE_DESTINATION_LABELS: Record<
 > = {
   vault: 'Vault folder',
   eagle: 'Eagle',
+  'cmds-eagle': 'Eagle (via CMDS Eagle)',
   cloud: 'Cloud',
 }
 
@@ -50,13 +61,13 @@ export function destinationFromPasteBehavior(
 ): ResolvedImageDestination | 'ask' {
   if (behavior === 'local') return 'vault'
   if (behavior === 'cloud' || behavior === 'ask') return behavior
-  return 'eagle'
+  return 'cmds-eagle'
 }
 
 /**
- * The per-request choice (from the "ask" prompt) wins. Otherwise the vault
- * setting stays in the vault and the sync setting follows CMDS Eagle, with an
- * unresolved "ask" defaulting to Eagle so a background task never blocks.
+ * The per-request choice (from the "ask" prompt) wins. Otherwise vault and
+ * direct Eagle map one-to-one, and the sync setting follows CMDS Eagle with an
+ * unresolved "ask" defaulting to the plugin's Eagle import.
  */
 export function resolveImageDestination({
   requested,
@@ -68,7 +79,7 @@ export function resolveImageDestination({
   pasteBehavior: EaglePasteBehavior | undefined
 }): ResolvedImageDestination {
   if (isResolvedImageDestination(requested)) return requested
-  if (configured === 'vault') return 'vault'
+  if (configured !== 'cmds-eagle') return configured
   const synced = destinationFromPasteBehavior(pasteBehavior)
-  return synced === 'ask' ? 'eagle' : synced
+  return synced === 'ask' ? 'cmds-eagle' : synced
 }

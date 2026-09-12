@@ -1,5 +1,9 @@
 import { EagleBridge } from './eagle-bridge'
+import { EagleClient } from './eagle-client'
+import { buildEagleEmbedMarkdown, buildEagleOriginalPath } from './eagle-paths'
 import { ResolvedImageDestination } from './image-destination'
+
+const EAGLE_TAG = 'smart-composer'
 
 export type ImageDeliveryInput = {
   destination: ResolvedImageDestination
@@ -7,10 +11,13 @@ export type ImageDeliveryInput = {
   notePath: string
   bytes: ArrayBuffer
   mimeType: string
+  /** Stored as the Eagle item annotation (the generation prompt). */
+  annotation?: string
 }
 
 export type ImageDeliveryDeps = {
   bridge: EagleBridge | null
+  eagle: EagleClient
   resolveAbsolutePath: (localPath: string) => string | null
   trashLocalCopy: (localPath: string) => Promise<void>
 }
@@ -42,7 +49,41 @@ function keptInVault(localPath: string, error?: string): ImageDeliveryResult {
   }
 }
 
-async function deliverToEagle(
+function stem(path: string): string {
+  const name = basename(path)
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(0, dot) : name
+}
+
+/** Direct import through Eagle's local API; no other plugin involved. */
+async function deliverToEagleDirect(
+  input: ImageDeliveryInput,
+  deps: ImageDeliveryDeps,
+): Promise<ImageDeliveryResult> {
+  const absolutePath = deps.resolveAbsolutePath(input.localPath)
+  if (!absolutePath) {
+    throw new Error('Eagle import needs a local file system vault.')
+  }
+  if (!(await deps.eagle.isRunning())) {
+    throw new Error('Eagle is not running or its API is unreachable.')
+  }
+  const itemId = await deps.eagle.addFromPath({
+    path: absolutePath,
+    name: stem(input.localPath),
+    annotation: input.annotation,
+    tags: [EAGLE_TAG],
+  })
+  const item = await deps.eagle.waitForItem(itemId)
+  const libraryPath = await deps.eagle.getLibraryPath()
+  const markdown = buildEagleEmbedMarkdown({
+    item,
+    originalPath: buildEagleOriginalPath(libraryPath, item),
+  })
+  await deps.trashLocalCopy(input.localPath)
+  return { destination: 'eagle', markdown }
+}
+
+async function deliverToEaglePlugin(
   input: ImageDeliveryInput,
   deps: ImageDeliveryDeps,
 ): Promise<ImageDeliveryResult> {
@@ -54,7 +95,7 @@ async function deliverToEagle(
   })
   const markdown = await deps.bridge.uploadImageToEagle(file, input.notePath)
   await deps.trashLocalCopy(input.localPath)
-  return { destination: 'eagle', markdown }
+  return { destination: 'cmds-eagle', markdown }
 }
 
 async function deliverToCloud(
@@ -91,9 +132,13 @@ export async function deliverGeneratedImage(
 ): Promise<ImageDeliveryResult> {
   if (input.destination === 'vault') return keptInVault(input.localPath)
   try {
-    return input.destination === 'eagle'
-      ? await deliverToEagle(input, deps)
-      : await deliverToCloud(input, deps)
+    if (input.destination === 'eagle') {
+      return await deliverToEagleDirect(input, deps)
+    }
+    if (input.destination === 'cmds-eagle') {
+      return await deliverToEaglePlugin(input, deps)
+    }
+    return await deliverToCloud(input, deps)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return keptInVault(input.localPath, message)

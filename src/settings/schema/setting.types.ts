@@ -8,6 +8,7 @@ import {
   DEFAULT_PROVIDERS,
 } from '../../constants'
 import {
+  DEFAULT_EAGLE_API_BASE_URL,
   DEFAULT_IMAGE_DESTINATION,
   IMAGE_DESTINATIONS,
 } from '../../core/image/image-destination'
@@ -79,6 +80,7 @@ export const smartComposerSettingsSchema = z.object({
       concurrency: z.literal(1),
       // Field-level catch so older data keeps its folder/quality choices.
       destination: z.enum(IMAGE_DESTINATIONS).catch(DEFAULT_IMAGE_DESTINATION),
+      eagleApiBaseUrl: z.string().catch(DEFAULT_EAGLE_API_BASE_URL),
     })
     .catch({
       modelId: 'gpt-5.6-sol (plan)',
@@ -86,6 +88,7 @@ export const smartComposerSettingsSchema = z.object({
       quality: 'high',
       concurrency: 1,
       destination: DEFAULT_IMAGE_DESTINATION,
+      eagleApiBaseUrl: DEFAULT_EAGLE_API_BASE_URL,
     }),
 
   // System Prompt

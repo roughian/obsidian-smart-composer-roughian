@@ -66,9 +66,9 @@ function ImageDestinationModalComponent({
         <button
           className="mod-cta"
           disabled={!bridge}
-          onClick={() => pick('eagle')}
+          onClick={() => pick('cmds-eagle')}
         >
-          {RESOLVED_IMAGE_DESTINATION_LABELS.eagle}
+          {RESOLVED_IMAGE_DESTINATION_LABELS['cmds-eagle']}
         </button>
         <button onClick={() => pick('vault')}>
           {RESOLVED_IMAGE_DESTINATION_LABELS.vault}
