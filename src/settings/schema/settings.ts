@@ -1,3 +1,4 @@
+import { mergeImageModelCatalog } from '../../core/image/image-model-catalog'
 import {
   mergePlanModelCatalog,
   migratePlanModelId,
@@ -49,7 +50,9 @@ export function parseSmartComposerSettings(
     const imageGeneration = asRecord(migratedData.imageGeneration)
     const catalogMergedData = {
       ...migratedData,
-      chatModels: mergePlanModelCatalog(migratedData.chatModels),
+      chatModels: mergeImageModelCatalog(
+        mergePlanModelCatalog(migratedData.chatModels),
+      ),
       chatModelId: migratePlanModelId(migratedData.chatModelId),
       applyModelId: migratePlanModelId(migratedData.applyModelId),
       ...(inlineEdit

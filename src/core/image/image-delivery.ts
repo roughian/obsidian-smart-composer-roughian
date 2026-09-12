@@ -1,13 +1,12 @@
 import { EagleBridge } from './eagle-bridge'
 import { ResolvedImageDestination } from './image-destination'
 
-const GENERATED_IMAGE_MIME_TYPE = 'image/png'
-
 export type ImageDeliveryInput = {
   destination: ResolvedImageDestination
   localPath: string
   notePath: string
   bytes: ArrayBuffer
+  mimeType: string
 }
 
 export type ImageDeliveryDeps = {
@@ -51,7 +50,7 @@ async function deliverToEagle(
     throw new Error('CMDS Eagle plugin is not installed or enabled.')
   }
   const file = new File([input.bytes], basename(input.localPath), {
-    type: GENERATED_IMAGE_MIME_TYPE,
+    type: input.mimeType,
   })
   const markdown = await deps.bridge.uploadImageToEagle(file, input.notePath)
   await deps.trashLocalCopy(input.localPath)
@@ -71,11 +70,7 @@ async function deliverToCloud(
     throw new Error('Cloud upload needs a local file system vault.')
   }
   const filename = basename(input.localPath)
-  const result = await provider.upload(
-    absolutePath,
-    filename,
-    GENERATED_IMAGE_MIME_TYPE,
-  )
+  const result = await provider.upload(absolutePath, filename, input.mimeType)
   if (!result.success || !result.publicUrl) {
     throw new Error(result.error ?? 'Cloud upload failed.')
   }

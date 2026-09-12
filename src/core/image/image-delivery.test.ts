@@ -10,6 +10,7 @@ const input: ImageDeliveryInput = {
   localPath: 'Generated/circle.png',
   notePath: 'Notes/today.md',
   bytes: new Uint8Array([1, 2, 3]).buffer,
+  mimeType: 'image/png',
 }
 
 function fakeBridge(overrides: Partial<EagleBridge> = {}): EagleBridge {

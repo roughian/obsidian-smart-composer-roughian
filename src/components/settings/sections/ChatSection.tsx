@@ -63,7 +63,7 @@ export function ChatSection() {
 
       <ObsidianSetting
         name="Image generation model"
-        desc="Choose an enabled OpenAI Plan model with image generation support."
+        desc="(plan) models draw on your subscription (OAuth); Gemini and Grok image models use that provider's API key from the Providers section."
       >
         <ObsidianDropdown
           value={settings.imageGeneration.modelId}
@@ -74,7 +74,14 @@ export function ChatSection() {
                   (model.enable ?? true) &&
                   getProviderCapabilities(model).imageGeneration,
               )
-              .map((model) => [model.id, model.id]),
+              .map((model) => [
+                model.id,
+                `${model.id} · ${
+                  getProviderCapabilities(model).plan
+                    ? 'Plan (OAuth)'
+                    : 'API key'
+                }`,
+              ]),
           )}
           onChange={async (value) => {
             await setSettings({

@@ -46,6 +46,7 @@ npm run build
 
 - 이미지 생성에 쓸 모델 결정: `src/core/image/resolve-image-model.ts` (설정의 이미지 모델 → 채팅 모델 fallback 순)
 - 이미지 생성 허용 모델·비전 지원 여부: `src/core/llm/providerCapabilities.ts`의 `IMAGE_GENERATION_PLAN_MODELS`, `VISION_PROVIDER_TYPES`
+- API 키 방식 이미지 모델(Gemini `gemini-3.1-flash-image`/`gemini-3-pro-image`, xAI `grok-imagine-image-2.0`): `src/core/image/image-model-catalog.ts`의 `API_IMAGE_MODEL_CATALOG`(설정 로드 시 `mergeImageModelCatalog`로 자동 추가, `isApiImageModel`이 capability `imageGeneration`/`imageOnly` 결정). 새 이미지 모델을 추가하려면 카탈로그와 `API_IMAGE_MODEL_NAMES` 두 곳에 넣는다. 실제 호출은 `GeminiProvider.generateImage`(`geminiImage.ts`, generateContent + responseModalities), `XaiProvider.generateImage`(`xaiImage.ts`, `/v1/images/generations` b64_json, 참조 이미지 미지원). 어댑터는 `isImageGenerator`로 provider를 판별하고 `sniffImageMimeType`으로 PNG/JPEG 확장자를 정한다.
 - 붙여넣기 이미지 전처리(MIME 허용 목록, 2048px 축소, 20MB 상한): `src/utils/llm/image-preprocess.ts`, `src/utils/llm/image.ts`
 - 생성 진행/결과 채팅 표시: `src/utils/chat/image-echo.ts`의 `buildImageProgressMessage`(큐잉 즉시 callout 자리표시) → `buildImageEchoMessage`(`<smtcmp_block>` 임베드)가 같은 id로 제자리 교체(`upsertChatMessage`)
 - 이미지 Apply: `Chat.tsx` applyMutation에서 `isImageEchoBlock`이면 LLM 없이 `src/core/image/image-apply.ts`의 `openImageApplyView`가 커서 줄 아래에 참조를 넣은 diff를 ApplyView(Accept Incoming/Current/Both)로 연다. 태스크 카드 "Insert embed"도 같은 경로.

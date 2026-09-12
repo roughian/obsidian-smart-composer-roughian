@@ -40,8 +40,31 @@ describe('getProviderCapabilities', () => {
       reasoningEffort: true,
       vision: true,
       imageGeneration: false,
+      imageOnly: false,
       outputTokenLimit: true,
     })
+  })
+
+  it.each([
+    ['gemini', 'gemini-3.1-flash-image'],
+    ['gemini', 'gemini-3-pro-image'],
+    ['xai', 'grok-imagine-image-2.0'],
+  ] as const)(
+    'enables API-key image generation for image-only model %s/%s',
+    (providerType, modelName) => {
+      expect(
+        getProviderCapabilities(model(providerType, modelName)),
+      ).toMatchObject({ plan: false, imageGeneration: true, imageOnly: true })
+    },
+  )
+
+  it('keeps ordinary Gemini and Grok chat models text-only', () => {
+    expect(
+      getProviderCapabilities(model('gemini', 'gemini-3-pro-preview')),
+    ).toMatchObject({ imageGeneration: false, imageOnly: false })
+    expect(
+      getProviderCapabilities(model('xai', 'grok-4-1-fast')),
+    ).toMatchObject({ imageGeneration: false, imageOnly: false })
   })
 
   it.each([

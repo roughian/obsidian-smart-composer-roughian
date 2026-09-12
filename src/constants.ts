@@ -1,3 +1,4 @@
+import { API_IMAGE_MODEL_CATALOG } from './core/image/image-model-catalog'
 import { PLAN_MODEL_CATALOG } from './core/llm/planModelCatalog'
 import { ChatModel } from './types/chat-model.types'
 import { EmbeddingModel } from './types/embedding-model.types'
@@ -295,6 +296,7 @@ export const DEFAULT_PROVIDERS: readonly LLMProvider[] = [
 
 export const DEFAULT_CHAT_MODELS: readonly ChatModel[] = [
   ...PLAN_MODEL_CATALOG,
+  ...API_IMAGE_MODEL_CATALOG,
   {
     providerType: 'anthropic',
     providerId: PROVIDER_TYPES_INFO.anthropic.defaultProviderId,

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 
 import { useSettings } from '../../../contexts/settings-context'
+import { getProviderCapabilities } from '../../../core/llm/providerCapabilities'
 
 export function ModelSelect() {
   const { settings, setSettings } = useSettings()
@@ -22,7 +23,11 @@ export function ModelSelect() {
         <DropdownMenu.Content className="smtcmp-popover">
           <ul>
             {settings.chatModels
-              .filter(({ enable }) => enable ?? true)
+              .filter(
+                (model) =>
+                  (model.enable ?? true) &&
+                  !getProviderCapabilities(model).imageOnly,
+              )
               .map((chatModelOption) => (
                 <DropdownMenu.Item
                   key={chatModelOption.id}

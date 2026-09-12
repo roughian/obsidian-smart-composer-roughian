@@ -17,12 +17,13 @@ import {
   BackgroundTaskRunResult,
 } from '../../types/background-task'
 import { getChatModelClient } from '../llm/manager'
-import { OpenAICodexProvider } from '../llm/openaiCodexProvider'
+import { getProviderCapabilities } from '../llm/providerCapabilities'
 import { BackgroundTaskManager } from '../tasks/BackgroundTaskManager'
 
 import { getEagleBridge, getEaglePasteBehavior } from './eagle-bridge'
 import { ImageDeliveryResult, deliverGeneratedImage } from './image-delivery'
 import { resolveImageDestination } from './image-destination'
+import { isImageGenerator } from './image-generator'
 import { loadReferenceImageDataUrls } from './reference-image-store'
 
 export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
@@ -40,6 +41,7 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
     task: BackgroundTaskRecord,
     localPath: string,
     bytes: ArrayBuffer,
+    mimeType: string,
   ): Promise<ImageDeliveryResult> {
     const settings = this.getSettings()
     const adapter = this.app.vault.adapter
@@ -57,6 +59,7 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
             ? task.input.targetFilePath
             : '',
         bytes,
+        mimeType,
       },
       {
         bridge,
@@ -105,15 +108,15 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
       setSettings: this.setSettings,
     })
     if (
-      !(providerClient instanceof OpenAICodexProvider) ||
-      model.providerType !== 'openai-plan'
+      !getProviderCapabilities(model).imageGeneration ||
+      !isImageGenerator(providerClient)
     ) {
-      throw new Error('Native image generation requires a GPT Plan model.')
+      throw new Error(`Model "${model.id}" does not support image generation.`)
     }
 
     await context.updateProgress({
       phase: 'preparing',
-      message: 'Preparing Plan image request',
+      message: 'Preparing image request',
     })
     const referenceImages = await this.loadReferenceImages(task)
     const generated = await providerClient.generateImage(model, prompt, {
@@ -137,19 +140,21 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
       message: 'Saving recoverable local image',
     })
     const bytes = base64ToArrayBuffer(generated.base64)
+    const mimeType =
+      sniffImageMimeType(bytes) ?? generated.mimeType ?? 'image/png'
     const dimensions = readPngDimensions(bytes)
     const folder = normalizePath(settings.imageGeneration.outputFolder)
     await ensureFolder(this.app, folder)
     const filename = `${Date.now()}-${
       sanitizeFilename(prompt.slice(0, 48)) || 'generated-image'
-    }.png`
+    }.${IMAGE_EXTENSION_BY_MIME[mimeType] ?? 'png'}`
     const path = await getAvailablePath(this.app, folder, filename)
     await this.app.vault.createBinary(path, bytes)
     await context.updateProgress({
       phase: 'delivering',
       message: 'Storing image at its destination',
     })
-    const delivery = await this.deliver(task, path, bytes)
+    const delivery = await this.deliver(task, path, bytes, mimeType)
 
     const artifact: ArtifactRecord = {
       schemaVersion: 1,
@@ -163,7 +168,7 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
         markdown: delivery.markdown,
         ...(delivery.error ? { destinationError: delivery.error } : {}),
       },
-      mimeType: generated.mimeType,
+      mimeType,
       byteSize: bytes.byteLength,
       width: dimensions?.width,
       height: dimensions?.height,
@@ -176,6 +181,36 @@ export class PlanImageTaskAdapter implements BackgroundTaskAdapter {
     })
     return { status: 'succeeded', artifactIds: [artifact.id] }
   }
+}
+
+const IMAGE_EXTENSION_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+}
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47]
+const JPEG_SIGNATURE = [0xff, 0xd8, 0xff]
+const WEBP_RIFF = [0x52, 0x49, 0x46, 0x46]
+const WEBP_TAG = [0x57, 0x45, 0x42, 0x50]
+const WEBP_TAG_OFFSET = 8
+
+function startsWith(bytes: Uint8Array, signature: number[], offset = 0) {
+  return signature.every((value, index) => bytes[offset + index] === value)
+}
+
+/** Providers do not always declare the format (Grok returns JPEG), so read the magic bytes. */
+export function sniffImageMimeType(buffer: ArrayBuffer): string | null {
+  const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 12))
+  if (startsWith(bytes, PNG_SIGNATURE)) return 'image/png'
+  if (startsWith(bytes, JPEG_SIGNATURE)) return 'image/jpeg'
+  if (
+    startsWith(bytes, WEBP_RIFF) &&
+    startsWith(bytes, WEBP_TAG, WEBP_TAG_OFFSET)
+  ) {
+    return 'image/webp'
+  }
+  return null
 }
 
 export function readPngDimensions(
